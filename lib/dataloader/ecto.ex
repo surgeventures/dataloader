@@ -968,12 +968,38 @@ if Code.ensure_loaded?(Ecto) do
 
       # Optionally use `async_stream/3` function from
       # `opentelemetry_process_propagator` if available
-      if Code.ensure_loaded?(OpentelemetryProcessPropagator.Task) do
-        @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
-        defdelegate async_stream(items, fun, opts), to: OpentelemetryProcessPropagator.Task
-      else
-        @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
-        defdelegate async_stream(items, fun, opts), to: Task
+      cond do
+        Code.ensure_loaded?(OpentelemetryProcessPropagator.Task) ->
+          @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+          defdelegate async_stream(items, fun, opts), to: OpentelemetryProcessPropagator.Task
+
+        Code.ensure_loaded?(Spandex.Tracer) ->
+          @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+          def async_stream(items, fun, opts) do
+            case Spandex.Tracer.current_context() do
+              {:ok, context} ->
+                Task.async_stream(
+                  items,
+                  fn arg ->
+                    Spandex.Tracer.continue_trace("continue_trace", context, opts)
+
+                    try do
+                      fun.(arg)
+                    after
+                      Spandex.Tracer.finish_trace()
+                    end
+                  end,
+                  opts
+                )
+
+              {:error, _message} ->
+                Task.async_stream(items, fun, opts)
+            end
+          end
+
+        true ->
+          @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+          defdelegate async_stream(items, fun, opts), to: Task
       end
     end
   end
