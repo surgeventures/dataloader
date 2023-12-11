@@ -975,29 +975,7 @@ if Code.ensure_loaded?(Ecto) do
 
         Code.ensure_loaded?(Application.compile_env(:dataloader, :tracer)) ->
           @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
-          def async_stream(items, fun, opts) do
-            tracer = Application.get_env(:dataloader, :tracer)
-
-            case tracer.current_context() do
-              {:ok, context} ->
-                Task.async_stream(
-                  items,
-                  fn arg ->
-                    tracer.continue_trace("continue_trace", context, opts)
-
-                    try do
-                      fun.(arg)
-                    after
-                      tracer.finish_trace()
-                    end
-                  end,
-                  opts
-                )
-
-              {:error, _message} ->
-                Task.async_stream(items, fun, opts)
-            end
-          end
+          defdelegate async_stream(items, fun, opts), to: Dataloader.Task
 
         true ->
           @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
