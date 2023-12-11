@@ -7,10 +7,13 @@ defmodule Dataloader.Task do
   def async(fun) do
     tracer = Application.get_env(:dataloader, :tracer)
 
+    tracer.start_span("hola_world")
+    tracer.finish_span()
+
     case tracer.current_context() do
       {:ok, context} ->
         Task.async(fn ->
-          tracer.continue_trace("continue_trace", context)
+          tracer.continue_trace("async", context)
 
           try do
             fun.()
@@ -29,16 +32,14 @@ defmodule Dataloader.Task do
     tracer = Application.get_env(:dataloader, :tracer)
 
     tracer.start_span("hello_world")
-    tracer.finish_span("bye_world")
-
-    # raise inspect(tracer.current_context())
+    tracer.finish_span()
 
     case tracer.current_context() do
       {:ok, context} ->
         Task.async_stream(
           items,
           fn arg ->
-            tracer.continue_trace("continue_trace", context)
+            tracer.continue_trace("async_stream", context)
 
             try do
               fun.(arg)
