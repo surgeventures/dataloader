@@ -393,17 +393,26 @@ defmodule Dataloader do
 
   # Optionally use `async/1` and `async_stream/3` functions from
   # `opentelemetry_process_propagator` if available
-  if Code.ensure_loaded?(OpentelemetryProcessPropagator.Task) do
-    @spec async((() -> any)) :: Task.t()
-    defdelegate async(fun), to: OpentelemetryProcessPropagator.Task
+  cond do
+    Code.ensure_loaded?(OpentelemetryProcessPropagator.Task) ->
+      @spec async((() -> any)) :: Task.t()
+      defdelegate async(fun), to: OpentelemetryProcessPropagator.Task
 
-    @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
-    defdelegate async_stream(items, fun, opts), to: OpentelemetryProcessPropagator.Task
-  else
-    @spec async((() -> any)) :: Task.t()
-    defdelegate async(fun), to: Task
+      @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+      defdelegate async_stream(items, fun, opts), to: OpentelemetryProcessPropagator.Task
 
-    @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
-    defdelegate async_stream(items, fun, opts), to: Task
+    Code.ensure_loaded?(Application.compile_env(:dataloader, :tracer)) ->
+      @spec async((() -> any)) :: Task.t()
+      defdelegate async(fun), to: Dataloader.Task
+
+      @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+      defdelegate async_stream(items, fun, opts), to: Dataloader.Task
+
+    true ->
+      @spec async((() -> any)) :: Task.t()
+      defdelegate async(fun), to: Task
+
+      @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+      defdelegate async_stream(items, fun, opts), to: Task
   end
 end

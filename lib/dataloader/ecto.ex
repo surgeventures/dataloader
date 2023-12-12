@@ -968,12 +968,18 @@ if Code.ensure_loaded?(Ecto) do
 
       # Optionally use `async_stream/3` function from
       # `opentelemetry_process_propagator` if available
-      if Code.ensure_loaded?(OpentelemetryProcessPropagator.Task) do
-        @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
-        defdelegate async_stream(items, fun, opts), to: OpentelemetryProcessPropagator.Task
-      else
-        @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
-        defdelegate async_stream(items, fun, opts), to: Task
+      cond do
+        Code.ensure_loaded?(OpentelemetryProcessPropagator.Task) ->
+          @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+          defdelegate async_stream(items, fun, opts), to: OpentelemetryProcessPropagator.Task
+
+        Code.ensure_loaded?(Application.compile_env(:dataloader, :tracer)) ->
+          @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+          defdelegate async_stream(items, fun, opts), to: Dataloader.Task
+
+        true ->
+          @spec async_stream(Enumerable.t(), (term -> term), keyword) :: Enumerable.t()
+          defdelegate async_stream(items, fun, opts), to: Task
       end
     end
   end
