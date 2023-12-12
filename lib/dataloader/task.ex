@@ -11,7 +11,12 @@ defmodule Dataloader.Task do
       {:ok, context} ->
         Task.async(fn ->
           tracer.continue_trace("async", context)
-          fun.()
+
+          try do
+            fun.()
+          after
+            tracer.finish_trace()
+          end
         end)
 
       {:error, _message} ->
@@ -29,7 +34,12 @@ defmodule Dataloader.Task do
           items,
           fn arg ->
             tracer.continue_trace("async_stream", context)
-            fun.(arg)
+
+            try do
+              fun.(arg)
+            after
+              tracer.finish_trace()
+            end
           end,
           opts
         )
